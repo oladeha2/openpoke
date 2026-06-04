@@ -1,29 +1,34 @@
-"""Simple agent roster management - just a list of agent names."""
+"""Agent roster management with recency tracking."""
 
 import json
 import fcntl
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Dict, List, Optional
 
 from ...logging_config import logger
 
 
 class AgentRoster:
-    """Simple roster that stores agent names in a JSON file."""
+    """Roster that stores agent names with last-interacted timestamps."""
 
     def __init__(self, roster_path: Path):
         self._roster_path = roster_path
-        self._agents: list[str] = []
+        self._agents: List[Dict[str, str]] = []
         self.load()
 
     def load(self) -> None:
-        """Load agent names from roster.json."""
+        """Load agents from roster.json."""
         if self._roster_path.exists():
             try:
                 with open(self._roster_path, 'r') as f:
                     data = json.load(f)
                     if isinstance(data, list):
-                        self._agents = [str(name) for name in data]
+                        self._agents = [
+                            entry for entry in data
+                            if isinstance(entry, dict) and "name" in entry
+                        ]
             except Exception as exc:
                 logger.warning(f"Failed to load roster.json: {exc}")
                 self._agents = []
@@ -32,7 +37,7 @@ class AgentRoster:
             self.save()
 
     def save(self) -> None:
-        """Save agent names to roster.json with file locking."""
+        """Save agents to roster.json with file locking."""
         max_retries = 5
         retry_delay = 0.1
 
@@ -40,7 +45,6 @@ class AgentRoster:
             try:
                 self._roster_path.parent.mkdir(parents=True, exist_ok=True)
 
-                # Open file and acquire exclusive lock
                 with open(self._roster_path, 'w') as f:
                     fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     try:
@@ -50,25 +54,52 @@ class AgentRoster:
                         fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
             except BlockingIOError:
-                # Lock is held by another process
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
+                    retry_delay *= 2
                 else:
                     logger.warning("Failed to acquire lock on roster.json after retries")
             except Exception as exc:
                 logger.warning(f"Failed to save roster.json: {exc}")
                 break
 
+    def _now_iso(self) -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    def _find_entry(self, agent_name: str) -> Optional[Dict[str, str]]:
+        for entry in self._agents:
+            if entry["name"] == agent_name:
+                return entry
+        return None
+
     def add_agent(self, agent_name: str) -> None:
         """Add an agent to the roster if not already present."""
-        if agent_name not in self._agents:
-            self._agents.append(agent_name)
+        if self._find_entry(agent_name) is None:
+            self._agents.append({
+                "name": agent_name,
+                "last_interacted": self._now_iso(),
+            })
             self.save()
 
-    def get_agents(self) -> list[str]:
+    def touch_agent(self, agent_name: str) -> None:
+        """Update last_interacted timestamp for an existing agent."""
+        entry = self._find_entry(agent_name)
+        if entry is not None:
+            entry["last_interacted"] = self._now_iso()
+            self.save()
+
+    def get_agents(self) -> List[str]:
         """Get list of all agent names."""
-        return list(self._agents)
+        return [entry["name"] for entry in self._agents]
+
+    def get_agents_by_recency(self, top_k: int) -> List[str]:
+        """Return top_k agent names sorted by most recent interaction first."""
+        sorted_agents = sorted(
+            self._agents,
+            key=lambda e: e.get("last_interacted", ""),
+            reverse=True,
+        )
+        return [entry["name"] for entry in sorted_agents[:top_k]]
 
     def clear(self) -> None:
         """Clear the agent roster."""

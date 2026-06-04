@@ -88,4 +88,42 @@ async def request_chat_completion(
     raise OpenRouterError("OpenRouter request failed: unknown error")
 
 
-__all__ = ["OpenRouterError", "request_chat_completion", "OpenRouterBaseURL"]
+async def request_embedding(
+    *,
+    model: str,
+    input_text: str,
+    api_key: Optional[str] = None,
+    base_url: str = OpenRouterBaseURL,
+) -> List[float]:
+    """Request an embedding vector and return it as a list of floats."""
+
+    payload: Dict[str, object] = {
+        "model": model,
+        "input": input_text,
+    }
+
+    url = f"{base_url.rstrip('/')}/embeddings"
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                url,
+                headers=_headers(api_key=api_key),
+                json=payload,
+                timeout=30.0,
+            )
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                _handle_response_error(exc)
+            data = response.json()
+            return data["data"][0]["embedding"]
+        except httpx.HTTPStatusError as exc:  # pragma: no cover - handled above
+            _handle_response_error(exc)
+        except httpx.HTTPError as exc:
+            raise OpenRouterError(f"OpenRouter embedding request failed: {exc}") from exc
+
+    raise OpenRouterError("OpenRouter embedding request failed: unknown error")
+
+
+__all__ = ["OpenRouterError", "request_chat_completion", "request_embedding", "OpenRouterBaseURL"]

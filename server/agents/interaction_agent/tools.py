@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from ...logging_config import logger
 from ...services.conversation import get_conversation_log
-from ...services.execution import get_agent_roster, get_execution_agent_logs
+from ...services.execution import get_agent_roster, get_embedding_store, get_execution_agent_logs
 from ..execution_agent.batch_manager import ExecutionBatchManager
 
 
@@ -108,7 +108,15 @@ TOOL_SCHEMAS = [
 _EXECUTION_BATCH_MANAGER = ExecutionBatchManager()
 
 
-# Create or reuse execution agent and dispatch instructions asynchronously
+async def _update_embedding(agent_name: str, instructions: str) -> None:
+    try:
+        logger.info(f"Updating embedding for agent {agent_name}")
+        store = get_embedding_store()
+        await store.upsert(agent_name, instructions)
+    except Exception as exc:
+        logger.warning(f"Embedding update failed for '{agent_name}': {exc}")
+
+
 def send_message_to_agent(agent_name: str, instructions: str) -> ToolResult:
     """Send instructions to an execution agent."""
     roster = get_agent_roster()
@@ -118,6 +126,8 @@ def send_message_to_agent(agent_name: str, instructions: str) -> ToolResult:
 
     if is_new:
         roster.add_agent(agent_name)
+    else:
+        roster.touch_agent(agent_name)
 
     get_execution_agent_logs().record_request(agent_name, instructions)
 
@@ -139,6 +149,7 @@ def send_message_to_agent(agent_name: str, instructions: str) -> ToolResult:
         return ToolResult(success=False, payload={"error": "No event loop available"})
 
     loop.create_task(_execute_async())
+    loop.create_task(_update_embedding(agent_name, instructions))
 
     return ToolResult(
         success=True,
