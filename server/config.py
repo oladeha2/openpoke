@@ -67,6 +67,15 @@ class Settings(BaseModel):
     enable_docs: bool = Field(default=os.getenv("OPENPOKE_ENABLE_DOCS", "1") != "0")
     docs_url: Optional[str] = Field(default=os.getenv("OPENPOKE_DOCS_URL", "/docs"))
 
+    # Semantic search for agent filtering
+    top_k_agents: int = Field(default=_env_int("OPENPOKE_TOP_K_AGENTS", 5))
+    max_agent_instructions_for_embedding: int = Field(
+        default=_env_int("OPENPOKE_MAX_AGENT_INSTRUCTIONS_FOR_EMBEDDING", 3)
+    )
+    embedding_model: str = Field(
+        default=os.getenv("OPENPOKE_EMBEDDING_MODEL", "openai/text-embedding-3-small")
+    )
+
     # Summarisation controls
     conversation_summary_threshold: int = Field(default=100)
     conversation_summary_tail_size: int = Field(default=10)
