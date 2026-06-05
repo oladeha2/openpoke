@@ -103,6 +103,28 @@ TOOL_SCHEMAS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "save_preference",
+            "description": "Save an inferred user preference based on a consistent observed pattern in the user's behavior. Only use this when you've observed the same behavior multiple times. The user will be notified about this preference.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "A clear, specific natural language statement about the user's preference or habit.",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Brief explanation of the pattern you observed that led to this inference (e.g., 'User has consistently used lowercase in all messages').",
+                    },
+                },
+                "required": ["content", "reason"],
+                "additionalProperties": False,
+            },
+        },
+    },
 ]
 
 _EXECUTION_BATCH_MANAGER = ExecutionBatchManager()
@@ -200,6 +222,29 @@ def send_draft(
     )
 
 
+def save_preference(content: str, reason: str) -> ToolResult:
+    """Save an agent-inferred preference and notify the user."""
+    from ...services.preferences import get_preference_store
+
+    store = get_preference_store()
+    result = store.add(content, source="agent")
+
+    if "error" in result:
+        return ToolResult(success=False, payload=result)
+
+    notification = f"I noticed {reason.lower().rstrip('.')} — I've saved that as a preference so I'll keep it in mind going forward."
+
+    log = get_conversation_log()
+    log.record_reply(notification)
+
+    return ToolResult(
+        success=True,
+        payload={"status": "preference_saved", "preference_id": result["id"]},
+        user_message=notification,
+        recorded_reply=True,
+    )
+
+
 # Record silent wait state to avoid duplicate responses
 def wait(reason: str) -> ToolResult:
     """Wait silently and add a wait log entry that is not visible to the user."""
@@ -244,6 +289,8 @@ def handle_tool_call(name: str, arguments: Any) -> ToolResult:
             return send_draft(**args)
         if name == "wait":
             return wait(**args)
+        if name == "save_preference":
+            return save_preference(**args)
 
         logger.warning("unexpected tool", extra={"tool": name})
         return ToolResult(success=False, payload={"error": f"Unknown tool: {name}"})
