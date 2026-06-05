@@ -28,3 +28,6 @@ The interaction agent's system prompt instructs it to let these preferences infl
 
 ![Preferences Injected into Context](./images/adding_preferences_to_context.png)
 
+### Scalabilty Discussion 
+
+There is a question in  this solution as to how you would potentially scale this up to allow for 100s of preferences. The interesting thing about preferences and contextual memory spefically is that they interaction and execution agents need to be aware of preferences at all time, meaning that the best place for them is always being available in conversation context. This fact makes scaling this hard. The most relevant solution to this scaling problem is probably some sort of semantic search solution over preferences based on the user query similar to how we scale the the execution agent issue. Preferences can be flagged with pinned, allowing users to pin prefercnes that will always show up along with results returned from semantic search. This still falls foul of the problem of missing out on preferences potentially but minimises the affect of that. I lean towards more preferences should always be there and the overall benefit of this feature outweighs implementing a solution that may miss preferences. 
