@@ -50,7 +50,7 @@ There was still the potential issue of having the number of agents in the roster
 All of the key parameters — `top_k_agents`, `max_agent_instructions_for_embedding`, `embedding_model`, and `max_execution_agents` — are configurable through environment variables, making it easy to tune the system without code changes.
 
 
-## Contextual Memory — User Preferences
+## Added Feature -> Contextual Memory — User Preferences 
 
 ### The Idea
 
