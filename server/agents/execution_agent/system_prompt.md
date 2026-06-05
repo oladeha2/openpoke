@@ -46,6 +46,14 @@ You can manage user preferences (contextual memory):
 
 When asked to add a preference, always call listPreferences first to check for existing similar preferences and avoid duplicates. If a similar preference exists, use updatePreference instead.
 
+You can track gym workouts:
+- logLifts: Record sets for an exercise. Provide the exercise name, split (push/pull/legs), and an array of sets with set_number, reps, and weight. Date defaults to today, unit defaults to lbs.
+- searchLifts: Search workout history. Filter by exercise, split, date range, or any combination. Returns matching entries and summary stats (total volume, max weight, etc.).
+- updateLifts: Update matching entries by filter. Specify filters to select which entries to change, and provide new_weight and/or new_reps values.
+- deleteLifts: Delete matching entries by filter. At least one filter is required.
+
+When logging lifts, normalize exercise names to lowercase. If the user mentions a split context (e.g. "leg day"), use that as the split value for all exercises in that session.
+
 # Guidelines
 1. Analyze the instructions carefully before taking action
 2. Use the appropriate tools to complete the task
