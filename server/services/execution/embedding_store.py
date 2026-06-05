@@ -2,7 +2,6 @@
 
 import json
 import fcntl
-import math
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,15 +10,7 @@ from typing import Any, Dict, List, Optional
 from ...config import get_settings
 from ...logging_config import logger
 from ...openrouter_client import request_embedding
-
-
-def _cosine_similarity(a: List[float], b: List[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
-    norm_a = math.sqrt(sum(x * x for x in a))
-    norm_b = math.sqrt(sum(x * x for x in b))
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return dot / (norm_a * norm_b)
+from ...utils.similarity import cosine_similarity
 
 
 class AgentEmbeddingStore:
@@ -112,7 +103,7 @@ class AgentEmbeddingStore:
             stored_embedding = entry.get("embedding")
             if not stored_embedding:
                 continue
-            similarity = _cosine_similarity(query_embedding, stored_embedding)
+            similarity = cosine_similarity(query_embedding, stored_embedding)
             scores.append((name, similarity))
 
         scores.sort(key=lambda x: x[1], reverse=True)

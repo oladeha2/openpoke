@@ -1,4 +1,4 @@
-"""User preference store with JSON persistence."""
+"""User preference store with JSON persistence and semantic deduplication."""
 
 import fcntl
 import json
@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Optional
 
 from ...config import get_settings
 from ...logging_config import logger
+from ...openrouter_client import request_embedding
+from ...utils.similarity import cosine_similarity
 
 
 class PreferenceStore:
@@ -70,8 +72,8 @@ class PreferenceStore:
     def _now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat()
 
-    def add(self, content: str, source: str) -> Dict[str, Any]:
-        """Add a new preference. Returns the preference or an error dict."""
+    async def add(self, content: str, source: str) -> Dict[str, Any]:
+        """Add a new preference, merging into an existing one if semantically similar."""
         settings = get_settings()
         if len(self._preferences) >= settings.max_preferences:
             return {"error": "Preference limit reached. Remove existing preferences before adding new ones."}
@@ -79,17 +81,52 @@ class PreferenceStore:
         if source not in ("user", "agent"):
             return {"error": f"Invalid source: {source}. Must be 'user' or 'agent'."}
 
+        embedding = await request_embedding(
+            model=settings.embedding_model,
+            input_text=content,
+        )
+
+        best_match: Optional[Dict[str, Any]] = None
+        best_score: float = 0.0
+
+        for pref in self._preferences:
+            stored_embedding = pref.get("embedding")
+            if not stored_embedding:
+                continue
+            score = cosine_similarity(embedding, stored_embedding)
+            if score >= settings.preference_similarity_threshold and score > best_score:
+                best_match = pref
+                best_score = score
+
         now = self._now_iso()
+
+        if best_match is not None:
+            logger.info(
+                f"Merging preference into existing id={best_match['id']} "
+                f"(similarity={best_score:.3f})"
+            )
+            best_match["content"] = content
+            best_match["embedding"] = embedding
+            best_match["updated_at"] = now
+            self._save()
+            return self._without_embedding(best_match)
+
         preference = {
             "id": self._next_id(),
             "content": content,
             "source": source,
+            "embedding": embedding,
             "created_at": now,
             "updated_at": now,
         }
         self._preferences.append(preference)
         self._save()
-        return preference
+        return self._without_embedding(preference)
+
+    @staticmethod
+    def _without_embedding(pref: Dict[str, Any]) -> Dict[str, Any]:
+        """Return a copy of a preference dict without the embedding vector."""
+        return {k: v for k, v in pref.items() if k != "embedding"}
 
     def update(self, preference_id: int, content: str) -> Optional[Dict[str, Any]]:
         """Update a preference's content by ID. Returns None if not found."""
@@ -111,8 +148,8 @@ class PreferenceStore:
         return False
 
     def list_all(self) -> List[Dict[str, Any]]:
-        """Return a copy of all preferences."""
-        return list(self._preferences)
+        """Return all preferences without embedding vectors."""
+        return [self._without_embedding(p) for p in self._preferences]
 
     def clear(self) -> None:
         """Delete all preferences."""
