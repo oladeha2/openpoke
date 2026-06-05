@@ -30,7 +30,7 @@ This is enforced at the store level inside the `add()` method, meaning it applie
 
 The embedding vectors are stripped from preference entries before they are rendered into the LLM context or returned via API responses, so the float arrays never pollute the prompt or inflate token counts.
 
-![Preference Deduplication Flow](./images/preference_dedup.png)
+![Preference Deduplication Flow](./images/preference_store_process.png)
 
 ### Preferences in Context
 
