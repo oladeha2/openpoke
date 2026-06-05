@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from ...config import get_settings
 from ...logging_config import logger
 
 
@@ -73,12 +74,37 @@ class AgentRoster:
         return None
 
     def add_agent(self, agent_name: str) -> None:
-        """Add an agent to the roster if not already present."""
+        """Add an agent to the roster if not already present.
+
+        Enforces the hard cap: when the roster exceeds max_execution_agents,
+        the least recently interacted agent(s) are evicted along with their
+        embeddings.
+        """
         if self._find_entry(agent_name) is None:
             self._agents.append({
                 "name": agent_name,
                 "last_interacted": self._now_iso(),
             })
+
+            cap = get_settings().max_execution_agents
+            if len(self._agents) > cap:
+                sorted_agents = sorted(
+                    self._agents,
+                    key=lambda e: e.get("last_interacted", ""),
+                )
+                evict_count = len(self._agents) - cap
+                to_evict = sorted_agents[:evict_count]
+                evicted_names = {e["name"] for e in to_evict}
+                self._agents = [e for e in self._agents if e["name"] not in evicted_names]
+
+                for name in evicted_names:
+                    logger.info(f"Evicted agent from roster: {name}")
+                    try:
+                        from .embedding_store import get_embedding_store
+                        get_embedding_store().remove(name)
+                    except Exception:
+                        pass
+
             self.save()
 
     def touch_agent(self, agent_name: str) -> None:
@@ -100,6 +126,11 @@ class AgentRoster:
             reverse=True,
         )
         return [entry["name"] for entry in sorted_agents[:top_k]]
+
+    def remove_agent(self, agent_name: str) -> None:
+        """Remove a specific agent from the roster by name."""
+        self._agents = [e for e in self._agents if e["name"] != agent_name]
+        self.save()
 
     def clear(self) -> None:
         """Clear the agent roster."""

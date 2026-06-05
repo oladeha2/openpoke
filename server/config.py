@@ -76,6 +76,9 @@ class Settings(BaseModel):
         default=os.getenv("OPENPOKE_EMBEDDING_MODEL", "openai/text-embedding-3-small")
     )
 
+    # Roster hard cap
+    max_execution_agents: int = Field(default=_env_int("OPENPOKE_MAX_EXECUTION_AGENTS", 50))
+
     # Summarisation controls
     conversation_summary_threshold: int = Field(default=100)
     conversation_summary_tail_size: int = Field(default=10)
