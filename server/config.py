@@ -81,6 +81,9 @@ class Settings(BaseModel):
 
     # Preferences hard cap
     max_preferences: int = Field(default=_env_int("OPENPOKE_MAX_PREFERENCES", 20))
+    preference_similarity_threshold: float = Field(
+        default=float(os.getenv("OPENPOKE_PREFERENCE_SIMILARITY_THRESHOLD", "0.85"))
+    )
 
     # Summarisation controls
     conversation_summary_threshold: int = Field(default=100)

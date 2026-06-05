@@ -20,6 +20,18 @@ There are two distinct paths for creating preferences, and this separation is in
 
 ![Preference Storage Flow](./images/preferce_storing.png)
 
+### Preference Deduplication
+
+Without programmatic deduplication, semantically near-duplicate preferences can accumulate over time. A user might say "remember that I like formal emails" in one session and "use a professional tone in emails" in another — both express essentially the same preference, but without enforcement they would occupy two separate slots, wasting capacity and adding noise to the LLM's context window.
+
+To solve this, every new preference is embedded at creation time using `text-embedding-3-small` (the same model used for execution agent embeddings) and the resulting vector is stored inline alongside the preference entry. When a new preference is added — whether user-explicit or agent-inferred — the `PreferenceStore` embeds the incoming text and computes cosine similarity (using numpy for efficient vector operations) against every existing preference's stored embedding. If any existing preference exceeds the configurable similarity threshold (defaults to 0.85, configurable via `OPENPOKE_PREFERENCE_SIMILARITY_THRESHOLD`), the store treats the new preference as a refinement of the existing one: it updates the existing preference's content, regenerates its embedding, and bumps the `updated_at` timestamp. If multiple existing preferences exceed the threshold, the one with the highest similarity score is chosen for the merge.
+
+This is enforced at the store level inside the `add()` method, meaning it applies equally to both creation paths — user-explicit preferences via the execution agent and agent-inferred preferences via the interaction agent's `save_preference` tool. This is a deliberate choice: deduplication is a data integrity concern, not a caller concern, so it belongs in the store rather than being duplicated across tool handlers or relying on LLM prompt instructions (which are inherently unreliable).
+
+The embedding vectors are stripped from preference entries before they are rendered into the LLM context or returned via API responses, so the float arrays never pollute the prompt or inflate token counts.
+
+![Preference Deduplication Flow](./images/preference_dedup.png)
+
 ### Preferences in Context
 
 On every turn, as part of `prepare_message_with_history`, all stored preferences are loaded from the preference store and rendered as XML tags inside a `<user_preferences>` block. Each preference is rendered with its ID and source so the interaction agent knows whether it was user-requested or self-inferred. This block sits at the top of the assembled message — before conversation history, before active agents, before the current turn — giving it high positional weight in the context so the LLM is more likely to attend to these preferences when generating its response.

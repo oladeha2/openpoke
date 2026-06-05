@@ -1,6 +1,7 @@
 """Tool definitions for interaction agent."""
 
 import asyncio
+import inspect
 import json
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -222,12 +223,12 @@ def send_draft(
     )
 
 
-def save_preference(content: str, reason: str) -> ToolResult:
+async def save_preference(content: str, reason: str) -> ToolResult:
     """Save an agent-inferred preference and notify the user."""
     from ...services.preferences import get_preference_store
 
     store = get_preference_store()
-    result = store.add(content, source="agent")
+    result = await store.add(content, source="agent")
 
     if "error" in result:
         return ToolResult(success=False, payload=result)
@@ -270,8 +271,7 @@ def get_tool_schemas():
     return TOOL_SCHEMAS
 
 
-# Route tool calls to appropriate handlers with argument validation and error handling
-def handle_tool_call(name: str, arguments: Any) -> ToolResult:
+async def handle_tool_call(name: str, arguments: Any) -> ToolResult:
     """Handle tool calls from interaction agent."""
     try:
         if isinstance(arguments, str):
@@ -281,19 +281,24 @@ def handle_tool_call(name: str, arguments: Any) -> ToolResult:
         else:
             return ToolResult(success=False, payload={"error": "Invalid arguments format"})
 
-        if name == "send_message_to_agent":
-            return send_message_to_agent(**args)
-        if name == "send_message_to_user":
-            return send_message_to_user(**args)
-        if name == "send_draft":
-            return send_draft(**args)
-        if name == "wait":
-            return wait(**args)
-        if name == "save_preference":
-            return save_preference(**args)
+        handlers = {
+            "send_message_to_agent": send_message_to_agent,
+            "send_message_to_user": send_message_to_user,
+            "send_draft": send_draft,
+            "wait": wait,
+            "save_preference": save_preference,
+        }
 
-        logger.warning("unexpected tool", extra={"tool": name})
-        return ToolResult(success=False, payload={"error": f"Unknown tool: {name}"})
+        handler = handlers.get(name)
+        if handler is None:
+            logger.warning("unexpected tool", extra={"tool": name})
+            return ToolResult(success=False, payload={"error": f"Unknown tool: {name}"})
+
+        result = handler(**args)
+        if inspect.isawaitable(result):
+            result = await result
+        return result
+
     except json.JSONDecodeError:
         return ToolResult(success=False, payload={"error": "Invalid JSON"})
     except TypeError as exc:

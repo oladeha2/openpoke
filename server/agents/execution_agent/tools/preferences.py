@@ -86,9 +86,9 @@ def get_schemas() -> List[Dict[str, Any]]:
     return _SCHEMAS
 
 
-def _add_preference_tool(*, content: str) -> Dict[str, Any]:
+async def _add_preference_tool(*, content: str) -> Dict[str, Any]:
     store = get_preference_store()
-    return store.add(content, source="user")
+    return await store.add(content, source="user")
 
 
 def _update_preference_tool(*, preference_id: Any, content: str) -> Dict[str, Any]:
