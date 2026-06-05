@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Email to Alice",
+    "last_interacted": "2026-06-01T10:00:00+00:00"
+  },
+  {
+    "name": "Email to Bob",
+    "last_interacted": "2026-06-02T11:00:00+00:00"
+  },
+  {
+    "name": "Q3 Budget Analysis",
+    "last_interacted": "2026-06-03T12:00:00+00:00"
+  },
+  {
+    "name": "Tokyo Restaurant Search",
+    "last_interacted": "2026-06-04T13:00:00+00:00"
+  },
+  {
+    "name": "Weekly Team Standup",
+    "last_interacted": "2026-06-05T14:00:00+00:00"
+  },
+  {
+    "name": "Gym Progress Tracker",
+    "last_interacted": "2026-06-05T15:00:00+00:00"
+  },
+  {
+    "name": "LinkedIn Job Applications",
+    "last_interacted": "2026-06-05T16:00:00+00:00"
+  },
+  {
+    "name": "Dentist Appointment",
+    "last_interacted": "2026-06-05T17:00:00+00:00"
+  },
+  {
+    "name": "Mom Birthday Gift",
+    "last_interacted": "2026-06-05T18:00:00+00:00"
+  },
+  {
+    "name": "Vercel Deployment Monitor",
+    "last_interacted": "2026-06-05T19:00:00+00:00"
+  }
+]
