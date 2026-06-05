@@ -12,6 +12,8 @@ Detailed write-ups for each solution can be found below:
 
 3 relevant PRs 
 
+[Add Extra Layer of Preference Dedup Logic](https://github.com/oladeha2/openpoke/pull/8)
+
 [Update OpenPoke to Contain Preferences and Build Contextual Memory](https://github.com/oladeha2/openpoke/pull/3)
 
 [Improve Agent Overload Solution by Adding Hard Cap and LRU Eviction to Execution Agent Store](https://github.com/oladeha2/openpoke/pull/2)
