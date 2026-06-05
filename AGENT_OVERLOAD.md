@@ -1,6 +1,3 @@
-
-
-
 ## Fixing Agent Overload Issues
 
 The issue to fix here is as the roster of execution agents grow they begin to overload the context of the interaction agent since every active agent is inserted into the messages of the LLM call at every turn in the ```prepare_message_with_history``` function. Interestingly the blog author's claim that semantic search is a naive solution — this is not necessarily correct. Semantic search (depending on how its implemented of course) is actually a really robust and useful solution to the problem as it is the best way to filter possible agents to a relevant subset and provide only those as agents to be rendered as part of message preparation with history. With this in mind my proposed and implemented solution works as follows:
