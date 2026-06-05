@@ -118,6 +118,12 @@ class AgentEmbeddingStore:
         scores.sort(key=lambda x: x[1], reverse=True)
         return [name for name, _ in scores[:top_k]]
 
+    def remove(self, agent_name: str) -> None:
+        """Delete an agent's embedding."""
+        if agent_name in self._data:
+            del self._data[agent_name]
+            self._save()
+
 _DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 _EMBEDDINGS_PATH = _DATA_DIR / "execution_agents" / "embeddings.json"
 
