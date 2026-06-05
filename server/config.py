@@ -79,6 +79,9 @@ class Settings(BaseModel):
     # Roster hard cap
     max_execution_agents: int = Field(default=_env_int("OPENPOKE_MAX_EXECUTION_AGENTS", 50))
 
+    # Preferences hard cap
+    max_preferences: int = Field(default=_env_int("OPENPOKE_MAX_PREFERENCES", 20))
+
     # Summarisation controls
     conversation_summary_threshold: int = Field(default=100)
     conversation_summary_tail_size: int = Field(default=10)
