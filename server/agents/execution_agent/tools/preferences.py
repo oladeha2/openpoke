@@ -91,14 +91,14 @@ async def _add_preference_tool(*, content: str) -> Dict[str, Any]:
     return await store.add(content, source="user")
 
 
-def _update_preference_tool(*, preference_id: Any, content: str) -> Dict[str, Any]:
+async def _update_preference_tool(*, preference_id: Any, content: str) -> Dict[str, Any]:
     try:
         pid = int(preference_id)
     except (TypeError, ValueError):
         return {"error": "preference_id must be an integer"}
 
     store = get_preference_store()
-    result = store.update(pid, content)
+    result = await store.update(pid, content)
     if result is None:
         return {"error": "Preference not found"}
     return result

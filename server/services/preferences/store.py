@@ -128,14 +128,20 @@ class PreferenceStore:
         """Return a copy of a preference dict without the embedding vector."""
         return {k: v for k, v in pref.items() if k != "embedding"}
 
-    def update(self, preference_id: int, content: str) -> Optional[Dict[str, Any]]:
-        """Update a preference's content by ID. Returns None if not found."""
+    async def update(self, preference_id: int, content: str) -> Optional[Dict[str, Any]]:
+        """Update a preference's content and re-embed. Returns None if not found."""
+        settings = get_settings()
+
         for pref in self._preferences:
             if pref["id"] == preference_id:
                 pref["content"] = content
+                pref["embedding"] = await request_embedding(
+                    model=settings.embedding_model,
+                    input_text=content,
+                )
                 pref["updated_at"] = self._now_iso()
                 self._save()
-                return pref
+                return self._without_embedding(pref)
         return None
 
     def remove(self, preference_id: int) -> bool:
